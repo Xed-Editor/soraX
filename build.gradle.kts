@@ -62,7 +62,7 @@ fun Project.configureAndroidAndKotlin() {
         defaultConfig {
             targetSdk = Versions.targetSdkVersion
             versionCode = Versions.versionCode
-            versionName = Versions.versionName
+            versionName = Versions.appVersionName
         }
     }
 
@@ -76,7 +76,7 @@ fun Project.configureAndroidAndKotlin() {
 
 subprojects {
     group = "io.github.rosemoe"
-    version = Versions.versionName
+    version = Versions.artifactVersion
 
     plugins.withId("com.android.application") {
         configureAndroidAndKotlin()
@@ -87,8 +87,6 @@ subprojects {
 
     plugins.withId("com.vanniktech.maven.publish.base") {
         configure<MavenPublishBaseExtension> {
-            group = "io.github.rosemoe"
-            version = Versions.versionName
             pomFromGradleProperties()
             publishToMavenCentral()
             signAllPublications()
