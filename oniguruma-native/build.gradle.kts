@@ -24,13 +24,14 @@
 
 plugins {
     id("com.android.library")
-    id("com.vanniktech.maven.publish.base")
+    //id("com.vanniktech.maven.publish.base")
 }
 
 android {
     namespace = "io.github.rosemoe.sora.oniguruma"
-
+    compileSdk = 36
     defaultConfig {
+        minSdk = 26
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
@@ -45,7 +46,7 @@ android {
         }
     }
 
-    ndkVersion = "29.0.14206865"
+    ndkVersion = "28.0.13004108"
 
     externalNativeBuild {
         cmake {

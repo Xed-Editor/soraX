@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.invoke
+
 /*******************************************************************************
  *    sora-editor - the awesome code editor for Android
  *    https://github.com/Rosemoe/sora-editor
@@ -24,11 +26,13 @@
 
 plugins {
     id("com.android.library")
-    id("com.vanniktech.maven.publish.base")
+    //id("com.vanniktech.maven.publish.base")
+    kotlin("android")
 }
 
 android {
     namespace = "io.github.rosemoe.sora.langs.textmate"
+    compileSdk = 36
 
     defaultConfig {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -53,9 +57,9 @@ android {
 }
 
 dependencies {
-    compileOnly(projects.editor)
-    compileOnly(projects.onigurumaNative)
-
+    compileOnly(project(":editor"))
+    compileOnly(project(":oniguruma-native"))
+    
     implementation(libs.gson)
     implementation(libs.jcodings)
     implementation(libs.joni)
@@ -66,4 +70,12 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.espresso)
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+kotlin {
+    jvmToolchain(21)
 }

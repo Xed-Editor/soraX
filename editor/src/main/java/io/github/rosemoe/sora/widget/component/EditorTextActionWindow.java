@@ -24,16 +24,25 @@
 package io.github.rosemoe.sora.widget.component;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.RectF;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
+import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import io.github.rosemoe.sora.R;
 import io.github.rosemoe.sora.event.ColorSchemeUpdateEvent;
@@ -57,6 +66,7 @@ import io.github.rosemoe.sora.widget.schemes.EditorColorScheme;
  * @author Rosemoe
  */
 public class EditorTextActionWindow extends EditorPopupWindow implements View.OnClickListener, EditorBuiltinComponent {
+    private final static String TAG = "EditorTextActionWindow";
     private final static long DELAY = 200;
     private final static long CHECK_FOR_DISMISS_INTERVAL = 100;
     private final CodeEditor editor;
@@ -66,12 +76,15 @@ public class EditorTextActionWindow extends EditorPopupWindow implements View.On
     private final ImageButton cutBtn;
     private final ImageButton longSelectBtn;
     private final View rootView;
+    private final LinearLayout panelButtonContainer;
     private final EditorTouchEventHandler handler;
     private final EventManager eventManager;
     private long lastScroll;
     private int lastPosition;
     private int lastCause;
     private boolean enabled = true;
+
+    private final List<TextActionItem> registeredActionItems = new ArrayList<>();
 
     /**
      * Create a panel for the given editor
@@ -87,6 +100,7 @@ public class EditorTextActionWindow extends EditorPopupWindow implements View.On
         // Since popup window does provide decor view, we have to pass null to this method
         @SuppressLint("InflateParams")
         View root = this.rootView = LayoutInflater.from(editor.getContext()).inflate(R.layout.text_compose_panel, null);
+        this.panelButtonContainer = root.findViewById(R.id.panel_button_container);
         selectAllBtn = root.findViewById(R.id.panel_btn_select_all);
         cutBtn = root.findViewById(R.id.panel_btn_cut);
         copyBtn = root.findViewById(R.id.panel_btn_copy);
@@ -126,6 +140,12 @@ public class EditorTextActionWindow extends EditorPopupWindow implements View.On
         applyColorFilter(copyBtn, color);
         applyColorFilter(pasteBtn, color);
         applyColorFilter(longSelectBtn, color);
+
+        // Registered action buttons
+        for (TextActionItem actionItem : registeredActionItems) {
+            ImageButton imageButton = actionItem.getActionButton();
+            if (imageButton != null) applyColorFilter(imageButton, color);
+        }
     }
 
     protected void subscribeEvents() {
@@ -309,7 +329,7 @@ public class EditorTextActionWindow extends EditorPopupWindow implements View.On
         top = Math.max(0, Math.min(top, editor.getHeight() - getHeight() - 5));
         float handleLeftX = editor.getOffset(editor.getCursor().getLeftLine(), editor.getCursor().getLeftColumn());
         float handleRightX = editor.getOffset(editor.getCursor().getRightLine(), editor.getCursor().getRightColumn());
-        int panelX = (int) ((handleLeftX + handleRightX) / 2f - rootView.getMeasuredWidth() / 2f);
+        int panelX = (int) ((handleLeftX + handleRightX) / 2f - panelButtonContainer.getMeasuredWidth() / 2f);
         setLocationAbsolutely(panelX, top);
         show();
     }
@@ -323,8 +343,20 @@ public class EditorTextActionWindow extends EditorPopupWindow implements View.On
         pasteBtn.setVisibility(editor.isEditable() ? View.VISIBLE : View.GONE);
         cutBtn.setVisibility((editor.getCursor().isSelected() && editor.isEditable()) ? View.VISIBLE : View.GONE);
         longSelectBtn.setVisibility((!editor.getCursor().isSelected() && editor.isEditable()) ? View.VISIBLE : View.GONE);
-        rootView.measure(View.MeasureSpec.makeMeasureSpec(1000000, View.MeasureSpec.AT_MOST), View.MeasureSpec.makeMeasureSpec(100000, View.MeasureSpec.AT_MOST));
-        setSize(Math.min(rootView.getMeasuredWidth(), (int) (editor.getDpUnit() * 230)), getHeight());
+
+        for (TextActionItem actionItem : registeredActionItems) {
+            ImageButton imageButton = actionItem.getActionButton();
+            if (imageButton != null) {
+                imageButton.setVisibility(actionItem.getShouldShow().invoke(editor) ? View.VISIBLE : View.GONE);
+            }
+        }
+
+        final int NON_SCROLL_ITEM_COUNT = 7;
+        int widthSpec = View.MeasureSpec.makeMeasureSpec((int) (editor.getDpUnit() * (45 * NON_SCROLL_ITEM_COUNT + 5)), View.MeasureSpec.AT_MOST);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+
+        panelButtonContainer.measure(widthSpec, heightSpec);
+        setSize(panelButtonContainer.getMeasuredWidth(), getHeight());
     }
 
     @Override
@@ -357,5 +389,56 @@ public class EditorTextActionWindow extends EditorPopupWindow implements View.On
         dismiss();
     }
 
+    /**
+     * Register an action button in the text action window.
+     *
+     * @param item The text action item instance to register.
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public void registerTextAction(@NonNull TextActionItem item) {
+        if (registeredActionItems.contains(item)) return;
+
+        final Context context = editor.getContext();
+
+        ImageButton btn = new ImageButton(context);
+        btn.setImageResource(item.getIconRes());
+        btn.setContentDescription(context.getString(item.getTitleRes()));
+
+        final int btnSize = (int) (editor.getDpUnit() * 45);
+        btn.setLayoutParams(new LinearLayout.LayoutParams(btnSize, btnSize));
+
+        // Same background as default action items
+        TypedValue value = new TypedValue();
+        context.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, value, true);
+        btn.setBackgroundResource(value.resourceId);
+
+        panelButtonContainer.addView(btn);
+
+        item.setActionButton(btn);
+        registeredActionItems.add(item);
+
+        btn.setOnClickListener(v -> {
+            try {
+                item.getOnClick().invoke(editor);
+            } catch (Exception ex) {
+                Log.w(TAG, "Failed to execute action", ex);
+            }
+            dismiss();
+        });
+
+        applyColorScheme();
+        updateBtnState();
+    }
+
+    /**
+     * Unregister an action button in the text action window.
+     *
+     * @param item The text action item instance to unregister.
+     */
+    public void unregisterTextAction(@NonNull TextActionItem item) {
+        registeredActionItems.remove(item);
+        item.setActionButton(null);
+        updateBtnState();
+    }
 }
 

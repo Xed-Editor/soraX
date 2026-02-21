@@ -24,11 +24,13 @@
 
 plugins {
     id("com.android.library")
-    id("com.vanniktech.maven.publish.base")
+    //id("com.vanniktech.maven.publish.base")
+    id("kotlin-android")
 }
 
 android {
     namespace = "io.github.rosemoe.sora"
+    compileSdk = 36
 
     defaultConfig {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -41,6 +43,14 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+kotlin {
+    jvmToolchain(21)
 }
 
 dependencies {

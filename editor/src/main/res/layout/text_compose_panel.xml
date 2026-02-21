@@ -40,7 +40,8 @@
 			android:layout_height="match_parent"
 			android:layout_width="wrap_content"
 			android:orientation="horizontal"
-			android:gravity="center_vertical">
+			android:gravity="center_vertical"
+			android:id="@+id/panel_button_container">
 
 			<ImageButton
 				android:id="@+id/panel_btn_select_all"
