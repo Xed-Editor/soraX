@@ -44,7 +44,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name="sora-editor"
+rootProject.name="soraX"
 include(
     ":editor-bom",
     ":editor",
